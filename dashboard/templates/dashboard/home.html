@@ -6,15 +6,13 @@
 </head>
 <body class="bg-light">
     <div class="container mt-5">
-        <h1 class="text-primary mb-4"> Smart Rural Economy Dashboard</h1>
+        <h1 class="text-primary mb-4">🌾 Smart Rural Economy Dashboard</h1>
         
         {% if error %}
             <div class="alert alert-danger">{{ error }}</div>
         {% endif %}
 
-        <div class="card shadow-sm">
-            <div class="card-header bg-success text-white">
-                <div class="card shadow-sm mb-4">
+        <div class="card shadow-sm mb-4">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0">Make a New Prediction</h5>
             </div>
@@ -53,6 +51,9 @@
                 Predicted Price for <strong>{{ request.POST.crop_name }}</strong> is: <strong>₹{{ new_prediction|floatformat:2 }}</strong> per quintal!
             </div>
         {% endif %}
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
                 <h5 class="mb-0">Recent Prediction History (From ML Server)</h5>
             </div>
             <div class="card-body">
