@@ -1,8 +1,8 @@
 from django.shortcuts import render
 import requests
+import json  # Naya import graph data ke liye
 
 def dashboard_home(request):
-    # FastAPI endpoints
     fastapi_history_url = "http://127.0.0.1:8000/prediction-history?limit=10"
     fastapi_predict_url = "http://127.0.0.1:8000/predict-price"
     
@@ -10,10 +10,8 @@ def dashboard_home(request):
     error_message = None
     new_prediction = None
 
-    # Agar user ne form submit kiya hai (POST request)
     if request.method == "POST":
         try:
-            # Form ka data dictionary mein pack kar rahe hain
             payload = {
                 "state": request.POST.get("state"),
                 "region": request.POST.get("region"),
@@ -21,7 +19,6 @@ def dashboard_home(request):
                 "rainfall_mm": float(request.POST.get("rainfall_mm")),
                 "temperature_c": float(request.POST.get("temperature_c"))
             }
-            # FastAPI API ko data bhej rahe hain
             post_response = requests.post(fastapi_predict_url, json=payload)
             
             if post_response.status_code == 200:
@@ -31,7 +28,6 @@ def dashboard_home(request):
         except Exception as e:
             error_message = f"Error communicating with ML API: {e}"
 
-    # Default kaam: History lana (Yeh hamesha chalega)
     try:
         response = requests.get(fastapi_history_url)
         if response.status_code == 200:
@@ -42,10 +38,23 @@ def dashboard_home(request):
     except requests.exceptions.ConnectionError:
         error_message = "Could not connect to the ML Backend. Is FastAPI running on port 8000?"
 
+    # --- NAYA CODE: Graph ke liye data prepare karna ---
+    chart_labels = []
+    chart_prices = []
+    
+    # Hum data ko ulta kar rahe hain taaki purana data left mein aur naya right mein dikhe
+    for record in reversed(history_data):
+        # Label mein hum Crop aur Region dikhayenge
+        chart_labels.append(f"{record['crop_name']} ({record['region']})")
+        chart_prices.append(record['predicted_price'])
+
     context = {
         'history': history_data,
         'error': error_message,
-        'new_prediction': new_prediction
+        'new_prediction': new_prediction,
+        # Data ko JSON mein convert karke frontend par bhej rahe hain
+        'chart_labels': json.dumps(chart_labels),
+        'chart_prices': json.dumps(chart_prices)
     }
     
     return render(request, 'dashboard/home.html', context)
