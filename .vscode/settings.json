@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "dashboard/templates/**/*.html": "django-html"
+    },
+    "extensions.recommendations": [
+        "batisteo.vscode-django"
+    ]
+}
