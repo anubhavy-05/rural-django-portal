@@ -7,7 +7,11 @@
 </head>
 <body class="bg-light">
     <div class="container mt-5">
-        <h1 class="text-primary mb-4"> Smart Rural Economy Dashboard</h1>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="text-primary m-0">🌾 Smart Rural Economy Dashboard</h1>
+            <a href="{% url 'logout' %}" class="btn btn-outline-danger fw-bold">Logout</a>
+        </div>
         
         {% if error %}
             <div class="alert alert-danger">{{ error }}</div>
@@ -102,22 +106,22 @@
     </div>
 
     <script>
-        // Django se data le rahe hain (safe filter lagana zaroori hai JSON ke liye)
+        // Django se data le rahe hain
         const ctx = document.getElementById('priceChart').getContext('2d');
         const chartLabels = {{ chart_labels|safe }};
         const chartPrices = {{ chart_prices|safe }};
 
         new Chart(ctx, {
-            type: 'line', // Hum line graph bana rahe hain
+            type: 'line',
             data: {
                 labels: chartLabels,
                 datasets: [{
                     label: 'Predicted Price (₹ per quintal)',
                     data: chartPrices,
-                    borderColor: '#198754', // Green color
-                    backgroundColor: 'rgba(25, 135, 84, 0.2)', // Light green shade
+                    borderColor: '#198754', 
+                    backgroundColor: 'rgba(25, 135, 84, 0.2)', 
                     borderWidth: 2,
-                    tension: 0.3, // Line ko thoda smooth (curved) karne ke liye
+                    tension: 0.3, 
                     fill: true
                 }]
             },
@@ -125,7 +129,7 @@
                 responsive: true,
                 scales: {
                     y: {
-                        beginAtZero: false // Price zero se start nahi hoga, realistic view ke liye
+                        beginAtZero: false
                     }
                 }
             }
