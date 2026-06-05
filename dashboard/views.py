@@ -1,7 +1,9 @@
 from django.shortcuts import render
 import requests
-import json  # Naya import graph data ke liye
+import json
+from django.contrib.auth.decorators import login_required
 
+@login_required(login_url='/login/')
 def dashboard_home(request):
     fastapi_history_url = "http://127.0.0.1:8000/prediction-history?limit=10"
     fastapi_predict_url = "http://127.0.0.1:8000/predict-price"
@@ -9,7 +11,8 @@ def dashboard_home(request):
     history_data = []
     error_message = None
     new_prediction = None
-
+    
+    # ... iske aage aapka purana request.method == "POST": wala code waisa hi rahega
     if request.method == "POST":
         try:
             payload = {
