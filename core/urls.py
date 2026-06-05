@@ -1,10 +1,13 @@
 from django.contrib import admin
 from django.urls import path
-# Hamare naye view ko import kar rahe hain
-from dashboard.views import dashboard_home 
+from dashboard.views import dashboard_home
+from django.contrib.auth import views as auth_views  # Auth views import kar rahe hain
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # Jab URL khali ho (yani seedha 127.0.0.1:8001), toh dashboard_home chalao
-    path('', dashboard_home, name='home'), 
+    path('', dashboard_home, name='home'),
+    
+    # Naye Login aur Logout URLs
+    path('login/', auth_views.LoginView.as_view(template_name='dashboard/login.html'), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(next_page='/login/'), name='logout'),
 ]
