@@ -1,63 +1,294 @@
-from django.shortcuts import render
-import requests
-import json
-from django.contrib.auth.decorators import login_required
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Smart Rural Economy Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom Emerald Green Theme */
+        :root {
+            --emerald-main: #0b7a5a; 
+            --emerald-light: #48c78e; 
+            --emerald-bg: #f2f8f5;    
+        }
+        body {
+            background-color: var(--emerald-bg) !important;
+        }
+        .text-emerald { 
+            color: var(--emerald-main) !important; 
+        }
+        .bg-emerald { 
+            background-color: var(--emerald-main) !important; 
+            color: white !important; 
+        }
+        .btn-emerald { 
+            background-color: var(--emerald-main) !important; 
+            color: white !important; 
+            border: none;
+            border-radius: 6px;
+        }
+        .btn-emerald:hover {
+            background-color: #085e45 !important;
+            color: white !important;
+        }
+        .card {
+            border-radius: 10px;
+            border: 1px solid #e2efe7;
+        }
+        .card-header {
+            border-radius: 10px 10px 0 0 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="text-emerald m-0">🌾 Smart Rural Economy Dashboard</h1>
+            <div class="d-flex align-items-center gap-3">
+                <div id="google_translate_element"></div>
+                <a href="{% url 'logout' %}" class="btn btn-outline-danger fw-bold">Logout</a>
+            </div>
+        </div>
+        
+        {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
 
-@login_required(login_url='/login/')
-def dashboard_home(request):
-    fastapi_history_url = "http://127.0.0.1:8000/prediction-history?limit=10"
-    fastapi_predict_url = "http://127.0.0.1:8000/predict-price"
-    
-    history_data = []
-    error_message = None
-    new_prediction = None
-    
-    # ... iske aage aapka purana request.method == "POST": wala code waisa hi rahega
-    if request.method == "POST":
-        try:
-            payload = {
-                "state": request.POST.get("state"),
-                "region": request.POST.get("region"),
-                "crop_name": request.POST.get("crop_name"),
-                "rainfall_mm": float(request.POST.get("rainfall_mm")),
-                "temperature_c": float(request.POST.get("temperature_c"))
+        <div class="row">
+            <div class="col-md-12 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-emerald">
+                        <h5 class="mb-0">Make a New Prediction</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            {% csrf_token %}
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-2">
+                                    <label class="form-label">State</label>
+                                    <input type="text" name="state" class="form-control" required placeholder="e.g., Uttar Pradesh">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Region</label>
+                                    <input type="text" id="region_input" name="region" class="form-control" required placeholder="e.g., Azamgarh">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Crop Name</label>
+                                    <input type="text" name="crop_name" class="form-control" required placeholder="e.g., Wheat">
+                                </div>
+                                
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-outline-success w-100 fw-bold" onclick="fetchLiveWeather()" style="border-color: var(--emerald-main); color: var(--emerald-main);">
+                                        🌤️ Get Weather
+                                    </button>
+                                </div>
+
+                                <div class="col-md-2">
+                                    <label class="form-label">Rainfall (mm)</label>
+                                    <input type="number" step="0.1" id="rainfall_input" name="rainfall_mm" class="form-control" required placeholder="0.0">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Temp (°C)</label>
+                                    <input type="number" step="0.1" id="temp_input" name="temperature_c" class="form-control" required placeholder="0.0">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-emerald mt-4 w-100 fw-bold">Predict Price ↗</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% if new_prediction %}
+            <div class="alert alert-success fs-5 text-center" style="background-color: #d1e7dd; border-color: #badbcc; color: #0f5132;">
+                Predicted Price for <strong>{{ request.POST.crop_name }}</strong> is: <strong>₹{{ new_prediction|floatformat:2 }}</strong> per quintal!
+            </div>
+        {% endif %}
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-emerald d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Price Trend Analytics 📈</h5>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" id="btn-7" class="btn btn-light fw-bold text-emerald" onclick="filterChart(7)">7 Days</button>
+                    <button type="button" id="btn-30" class="btn btn-light fw-bold text-emerald" onclick="filterChart(30)">1 Month</button>
+                    <button type="button" id="btn-365" class="btn btn-light fw-bold text-emerald" onclick="filterChart(365)">1 Year</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="priceChart" height="100"></canvas>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-5">
+            <div class="card-header bg-emerald">
+                <h5 class="mb-0">Recent Prediction History (From ML Server)</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Crop</th>
+                            <th>Location</th>
+                            <th>Weather (Rain/Temp)</th>
+                            <th>Predicted Price (₹)</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                       {% for record in history %}
+                        <tr>
+                            <td><strong>{{ record.crop_name }}</strong></td>
+                            <td>{{ record.region }}, {{ record.state }}</td>
+                            <td>{{ record.rainfall_mm }}mm / {{ record.temperature_c }}°C</td>
+                            <td class="text-emerald fw-bold">₹{{ record.predicted_price|floatformat:2 }}</td>
+                            <td class="text-muted small">{{ record.created_at }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">No predictions found yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({
+                pageLanguage: 'en',
+                includedLanguages: 'hi,en',
+                layout: google.translate.TranslateElement.InlineLayout.SIMPLE
+            }, 'google_translate_element');
+        }
+    </script>
+    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+    <script>
+        async function fetchLiveWeather() {
+            const regionName = document.getElementById('region_input').value;
+            if (!regionName) {
+                alert("Pehle 'Region' box mein koi jagah ka naam likhein!");
+                return;
             }
-            post_response = requests.post(fastapi_predict_url, json=payload)
+            const weatherBtn = event.target;
+            const originalText = weatherBtn.innerHTML;
+            weatherBtn.innerHTML = "⏳ Fetching...";
+            weatherBtn.disabled = true;
+
+            try {
+                const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${regionName}&count=1`;
+                const geoResponse = await fetch(geoUrl);
+                const geoData = await geoResponse.json();
+
+                if (!geoData.results) {
+                    alert("Region internet par nahi mila. Kripya sahi spelling check karein.");
+                    weatherBtn.innerHTML = originalText;
+                    weatherBtn.disabled = false;
+                    return;
+                }
+
+                const lat = geoData.results[0].latitude;
+                const lon = geoData.results[0].longitude;
+
+                const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation`;
+                const weatherResponse = await fetch(weatherUrl);
+                const weatherData = await weatherResponse.json();
+
+                document.getElementById('temp_input').value = weatherData.current.temperature_2m;
+                document.getElementById('rainfall_input').value = (weatherData.current.precipitation * 10) || 50.5;
+
+                weatherBtn.innerHTML = "✅ Updated!";
+                setTimeout(() => {
+                    weatherBtn.innerHTML = originalText;
+                    weatherBtn.disabled = false;
+                }, 3000);
+
+            } catch (error) {
+                console.error("Error fetching weather:", error);
+                alert("Mausam ka data lane mein problem aayi. Kripya manually type karein.");
+                weatherBtn.innerHTML = originalText;
+                weatherBtn.disabled = false;
+            }
+        }
+    </script>
+
+    <script>
+        // Backend se poora data le rahe hain
+        const rawHistory = {{ raw_history|safe }};
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        let priceChart; // Global chart instance variable
+
+        // Function jo filter kiye hue data ka graph draw karega
+        function renderChart(filteredData) {
+            // Chronological order ke liye data ko reverse karenge (purana left mein, naya right mein)
+            const sortedData = [...filteredData].reverse();
             
-            if post_response.status_code == 200:
-                new_prediction = post_response.json().get("predicted_price_per_quintal")
-            else:
-                error_message = "Failed to get prediction from ML server."
-        except Exception as e:
-            error_message = f"Error communicating with ML API: {e}"
+            const labels = sortedData.map(r => `${r.crop_name} (${r.region})`);
+            const prices = sortedData.map(r => r.predicted_price);
 
-    try:
-        response = requests.get(fastapi_history_url)
-        if response.status_code == 200:
-            history_data = response.json().get("data", [])
-        else:
-            if not error_message:
-                error_message = "ML Server is responding with an error."
-    except requests.exceptions.ConnectionError:
-        error_message = "Could not connect to the ML Backend. Is FastAPI running on port 8000?"
+            if (priceChart) {
+                // Agar chart pehle se active hai, toh naya data bina page refresh ke update hoga smoothly
+                priceChart.data.labels = labels;
+                priceChart.data.datasets[0].data = prices;
+                priceChart.update();
+            } else {
+                // Pehli baar load hone par chart initialize karega
+                priceChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Predicted Price (₹ per quintal)',
+                            data: prices,
+                            borderColor: '#48c78e', 
+                            backgroundColor: 'rgba(72, 199, 142, 0.25)', 
+                            borderWidth: 3,
+                            tension: 0.3, 
+                            fill: true,
+                            pointBackgroundColor: '#0b7a5a'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: { beginAtZero: false }
+                        }
+                    }
+                });
+            }
+        }
 
-    # --- NAYA CODE: Graph ke liye data prepare karna ---
-    chart_labels = []
-    chart_prices = []
-    
-    # Hum data ko ulta kar rahe hain taaki purana data left mein aur naya right mein dikhe
-    for record in reversed(history_data):
-        # Label mein hum Crop aur Region dikhayenge
-        chart_labels.append(f"{record['crop_name']} ({record['region']})")
-        chart_prices.append(record['predicted_price'])
+        // Main function jo click karne par din calculate karegi
+        function filterChart(days) {
+            const now = new Date();
+            
+            const filtered = rawHistory.filter(record => {
+                // FastAPI se aane wale timestamp ko JS Date mein convert kar rahe hain
+                const recordDate = new Date(record.created_at);
+                const timeDiff = now - recordDate;
+                const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Milliseconds to Days conversion
+                return daysDiff <= days;
+            });
 
-    context = {
-        'history': history_data,
-        'error': error_message,
-        'new_prediction': new_prediction,
-        # Data ko JSON mein convert karke frontend par bhej rahe hain
-        'chart_labels': json.dumps(chart_labels),
-        'chart_prices': json.dumps(chart_prices)
-    }
-    
-    return render(request, 'dashboard/home.html', context)
+            // Active button ka style set karna
+            document.querySelectorAll('.btn-group .btn').forEach(btn => {
+                btn.classList.remove('btn-dark', 'text-white');
+                btn.classList.add('btn-light', 'text-emerald');
+            });
+            const activeBtn = document.getElementById(`btn-${days}`);
+            if(activeBtn) {
+                activeBtn.classList.remove('btn-light', 'text-emerald');
+                activeBtn.classList.add('btn-dark', 'text-white');
+            }
+
+            renderChart(filtered);
+        }
+
+        // Default settings: Jab page pehli baar khule, saal bhar ka data automatically dikhaye
+        filterChart(365);
+    </script>
+</body>
+</html>
