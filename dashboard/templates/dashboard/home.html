@@ -7,9 +7,9 @@
     <style>
         /* Custom Emerald Green Theme */
         :root {
-            --emerald-main: #0b7a5a; /* Deep Emerald Green */
-            --emerald-light: #48c78e; /* Vibrant Green for chart */
-            --emerald-bg: #f2f8f5;    /* Light greenish-off-white background */
+            --emerald-main: #0b7a5a; 
+            --emerald-light: #48c78e; 
+            --emerald-bg: #f2f8f5;    
         }
         body {
             background-color: var(--emerald-bg) !important;
@@ -43,8 +43,8 @@
 <body>
     <div class="container mt-5">
         
-       <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="text-emerald m-0"> Smart Rural Economy Dashboard</h1>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="text-emerald m-0">🌾 Smart Rural Economy Dashboard</h1>
             <div class="d-flex align-items-center gap-3">
                 <div id="google_translate_element"></div>
                 <a href="{% url 'logout' %}" class="btn btn-outline-danger fw-bold">Logout</a>
@@ -107,8 +107,13 @@
         {% endif %}
 
         <div class="card shadow-sm mb-4">
-            <div class="card-header bg-emerald">
+            <div class="card-header bg-emerald d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Price Trend Analytics 📈</h5>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" id="btn-7" class="btn btn-light fw-bold text-emerald" onclick="filterChart(7)">7 Days</button>
+                    <button type="button" id="btn-30" class="btn btn-light fw-bold text-emerald" onclick="filterChart(30)">1 Month</button>
+                    <button type="button" id="btn-365" class="btn btn-light fw-bold text-emerald" onclick="filterChart(365)">1 Year</button>
+                </div>
             </div>
             <div class="card-body">
                 <canvas id="priceChart" height="100"></canvas>
@@ -150,68 +155,30 @@
         </div>
     </div>
 
-    <script>
-        const ctx = document.getElementById('priceChart').getContext('2d');
-        const chartLabels = {{ chart_labels|safe }};
-        const chartPrices = {{ chart_prices|safe }};
-
-        new Chart(ctx, {
-            // Screenshot jaisa bar dikhane ke liye type 'bar' bhi kar sakte hain, 
-            // par line trend ke liye zyada acha hai. Main isko abhi 'line' hi rakh raha hu
-            // exact purane logic ke hisaab se.
-            type: 'line',
-            data: {
-                labels: chartLabels,
-                datasets: [{
-                    label: 'Predicted Price (₹ per quintal)',
-                    data: chartPrices,
-                    // Graph ke color ko image wale vibrant green se match kiya hai
-                    borderColor: '#48c78e', 
-                    backgroundColor: 'rgba(72, 199, 142, 0.25)', 
-                    borderWidth: 3,
-                    tension: 0.3, 
-                    fill: true,
-                    pointBackgroundColor: '#0b7a5a'
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: false
-                    }
-                }
-            }
-        });
-    </script>
     <script type="text/javascript">
         function googleTranslateElementInit() {
             new google.translate.TranslateElement({
                 pageLanguage: 'en',
-                includedLanguages: 'hi,en', // Hum yahan sirf Hindi aur English allow kar rahe hain
+                includedLanguages: 'hi,en',
                 layout: google.translate.TranslateElement.InlineLayout.SIMPLE
             }, 'google_translate_element');
         }
     </script>
     <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-<script>
+
+    <script>
         async function fetchLiveWeather() {
-            // Region wale input box se naam nikalna
             const regionName = document.getElementById('region_input').value;
-            
             if (!regionName) {
                 alert("Pehle 'Region' box mein koi jagah ka naam likhein!");
                 return;
             }
-
-            // Button ka text change karke loading dikhana
             const weatherBtn = event.target;
             const originalText = weatherBtn.innerHTML;
             weatherBtn.innerHTML = "⏳ Fetching...";
             weatherBtn.disabled = true;
 
             try {
-                // Step 1: Jagah ka naam (Region) dekar uska Latitude aur Longitude nikalna
                 const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${regionName}&count=1`;
                 const geoResponse = await fetch(geoUrl);
                 const geoData = await geoResponse.json();
@@ -226,19 +193,13 @@
                 const lat = geoData.results[0].latitude;
                 const lon = geoData.results[0].longitude;
 
-                // Step 2: Us Latitude/Longitude ka aaj ka mausam (Weather) nikalna
-                // current=temperature_2m,precipitation hume Temp aur Rainfall nikal kar dega
                 const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation`;
                 const weatherResponse = await fetch(weatherUrl);
                 const weatherData = await weatherResponse.json();
 
-                // Step 3: Form ke box mein auto-fill karna
                 document.getElementById('temp_input').value = weatherData.current.temperature_2m;
-                // Note: Live rainfall data accurate millimeter mein lana API se mushkil hota hai, 
-                // isliye hum current precipitation ko thoda scale kar rahe hain basic use ke liye.
-                document.getElementById('rainfall_input').value = (weatherData.current.precipitation * 10) || 50.5; // Default safe value agar baarish 0 hai
+                document.getElementById('rainfall_input').value = (weatherData.current.precipitation * 10) || 50.5;
 
-                // Success!
                 weatherBtn.innerHTML = "✅ Updated!";
                 setTimeout(() => {
                     weatherBtn.innerHTML = originalText;
@@ -252,6 +213,82 @@
                 weatherBtn.disabled = false;
             }
         }
+    </script>
+
+    <script>
+        // Backend se poora data le rahe hain
+        const rawHistory = {{ raw_history|safe }};
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        let priceChart; // Global chart instance variable
+
+        // Function jo filter kiye hue data ka graph draw karega
+        function renderChart(filteredData) {
+            // Chronological order ke liye data ko reverse karenge (purana left mein, naya right mein)
+            const sortedData = [...filteredData].reverse();
+            
+            const labels = sortedData.map(r => `${r.crop_name} (${r.region})`);
+            const prices = sortedData.map(r => r.predicted_price);
+
+            if (priceChart) {
+                // Agar chart pehle se active hai, toh naya data bina page refresh ke update hoga smoothly
+                priceChart.data.labels = labels;
+                priceChart.data.datasets[0].data = prices;
+                priceChart.update();
+            } else {
+                // Pehli baar load hone par chart initialize karega
+                priceChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Predicted Price (₹ per quintal)',
+                            data: prices,
+                            borderColor: '#48c78e', 
+                            backgroundColor: 'rgba(72, 199, 142, 0.25)', 
+                            borderWidth: 3,
+                            tension: 0.3, 
+                            fill: true,
+                            pointBackgroundColor: '#0b7a5a'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: { beginAtZero: false }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Main function jo click karne par din calculate karegi
+        function filterChart(days) {
+            const now = new Date();
+            
+            const filtered = rawHistory.filter(record => {
+                // FastAPI se aane wale timestamp ko JS Date mein convert kar rahe hain
+                const recordDate = new Date(record.created_at);
+                const timeDiff = now - recordDate;
+                const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Milliseconds to Days conversion
+                return daysDiff <= days;
+            });
+
+            // Active button ka style set karna
+            document.querySelectorAll('.btn-group .btn').forEach(btn => {
+                btn.classList.remove('btn-dark', 'text-white');
+                btn.classList.add('btn-light', 'text-emerald');
+            });
+            const activeBtn = document.getElementById(`btn-${days}`);
+            if(activeBtn) {
+                activeBtn.classList.remove('btn-light', 'text-emerald');
+                activeBtn.classList.add('btn-dark', 'text-white');
+            }
+
+            renderChart(filtered);
+        }
+
+        // Default settings: Jab page pehli baar khule, saal bhar ka data automatically dikhaye
+        filterChart(365);
     </script>
 </body>
 </html>
