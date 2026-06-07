@@ -38,6 +38,20 @@
         .card-header {
             border-radius: 10px 10px 0 0 !important;
         }
+
+        /* Chatbot Widget Styles */
+        #chat-widget { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
+        #chat-button { width: 60px; height: 60px; border-radius: 50%; background-color: var(--emerald-main); color: white; border: none; font-size: 24px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); cursor: pointer; transition: transform 0.3s; }
+        #chat-button:hover { transform: scale(1.1); }
+        #chat-window { display: none; width: 320px; height: 400px; background: white; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); flex-direction: column; overflow: hidden; position: absolute; bottom: 75px; right: 0; border: 1px solid #e2efe7; }
+        #chat-header { background-color: var(--emerald-main); color: white; padding: 12px; font-weight: bold; display: flex; justify-content: space-between; }
+        #chat-messages { flex: 1; padding: 10px; overflow-y: auto; background-color: #f2f8f5; display: flex; flex-direction: column; gap: 8px; }
+        .message { max-width: 80%; padding: 8px 12px; border-radius: 15px; font-size: 14px; }
+        .bot-msg { background-color: white; color: var(--emerald-main); align-self: flex-start; border-bottom-left-radius: 2px; border: 1px solid #e2efe7; }
+        .user-msg { background-color: var(--emerald-main); color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        #chat-input-area { display: flex; border-top: 1px solid #e2efe7; }
+        #chat-input { flex: 1; border: none; padding: 12px; outline: none; }
+        #chat-send { background: var(--emerald-main); color: white; border: none; padding: 0 15px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -155,6 +169,23 @@
         </div>
     </div>
 
+    <div id="chat-widget">
+        <button id="chat-button" onclick="toggleChat()">🤖</button>
+        <div id="chat-window">
+            <div id="chat-header">
+                <span>🌾 Kisan Mitra AI</span>
+                <span style="cursor:pointer;" onclick="toggleChat()">✖</span>
+            </div>
+            <div id="chat-messages">
+                <div class="message bot-msg">Namaste! Main Kisan Mitra AI hu. Aap mujhse kisi bhi fasal ka latest predicted daam pooch sakte hain (jaise: "Wheat ka kya daam chal raha hai?").</div>
+            </div>
+            <div id="chat-input-area">
+                <input type="text" id="chat-input" placeholder="Type a message..." onkeypress="handleChatEnter(event)">
+                <button id="chat-send" onclick="sendChatMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
     <script type="text/javascript">
         function googleTranslateElementInit() {
             new google.translate.TranslateElement({
@@ -216,26 +247,20 @@
     </script>
 
     <script>
-        // Backend se poora data le rahe hain
         const rawHistory = {{ raw_history|safe }};
         const ctx = document.getElementById('priceChart').getContext('2d');
-        let priceChart; // Global chart instance variable
+        let priceChart;
 
-        // Function jo filter kiye hue data ka graph draw karega
         function renderChart(filteredData) {
-            // Chronological order ke liye data ko reverse karenge (purana left mein, naya right mein)
             const sortedData = [...filteredData].reverse();
-            
             const labels = sortedData.map(r => `${r.crop_name} (${r.region})`);
             const prices = sortedData.map(r => r.predicted_price);
 
             if (priceChart) {
-                // Agar chart pehle se active hai, toh naya data bina page refresh ke update hoga smoothly
                 priceChart.data.labels = labels;
                 priceChart.data.datasets[0].data = prices;
                 priceChart.update();
             } else {
-                // Pehli baar load hone par chart initialize karega
                 priceChart = new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -261,19 +286,15 @@
             }
         }
 
-        // Main function jo click karne par din calculate karegi
         function filterChart(days) {
             const now = new Date();
-            
             const filtered = rawHistory.filter(record => {
-                // FastAPI se aane wale timestamp ko JS Date mein convert kar rahe hain
                 const recordDate = new Date(record.created_at);
                 const timeDiff = now - recordDate;
-                const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Milliseconds to Days conversion
+                const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
                 return daysDiff <= days;
             });
 
-            // Active button ka style set karna
             document.querySelectorAll('.btn-group .btn').forEach(btn => {
                 btn.classList.remove('btn-dark', 'text-white');
                 btn.classList.add('btn-light', 'text-emerald');
@@ -287,8 +308,53 @@
             renderChart(filtered);
         }
 
-        // Default settings: Jab page pehli baar khule, saal bhar ka data automatically dikhaye
         filterChart(365);
+    </script>
+
+    <script>
+        function toggleChat() {
+            const chatWindow = document.getElementById('chat-window');
+            chatWindow.style.display = chatWindow.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        function appendMessage(text, sender) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${sender}-msg`;
+            msgDiv.innerText = text;
+            document.getElementById('chat-messages').appendChild(msgDiv);
+            document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+        }
+
+        function sendChatMessage() {
+            const inputField = document.getElementById('chat-input');
+            const userText = inputField.value.trim();
+            if(!userText) return;
+
+            appendMessage(userText, 'user');
+            inputField.value = '';
+
+            setTimeout(() => {
+                const lowerText = userText.toLowerCase();
+                let foundCrop = null;
+                
+                for(let record of rawHistory) {
+                    if(lowerText.includes(record.crop_name.toLowerCase())) {
+                        foundCrop = record;
+                        break;
+                    }
+                }
+
+                if(foundCrop) {
+                    appendMessage(`Mujhe apne data mein mila hai ki haal hi mein ${foundCrop.region} mein ${foundCrop.crop_name} ka predicted price ₹${foundCrop.predicted_price.toFixed(2)}/quintal nikala gaya hai.`, 'bot');
+                } else {
+                    appendMessage("Maaf kijiye, abhi is fasal ka koi recent data nahi hai. Aap upar form se naya prediction nikal sakte hain.", 'bot');
+                }
+            }, 600);
+        }
+
+        function handleChatEnter(event) {
+            if(event.key === 'Enter') sendChatMessage();
+        }
     </script>
 </body>
 </html>
