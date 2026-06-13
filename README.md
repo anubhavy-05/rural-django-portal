@@ -2,7 +2,7 @@
 
 An intelligent, full-stack data analytics and machine learning platform built to bridge the digital divide in rural sectors. The system predicts agricultural commodity prices using advanced machine learning models, automates live localized weather aggregation, offers responsive time-series visualizations, and includes an interactive client-side AI virtual assistant.
 
-![Dashboard Preview](image/dashboard-preview.png)
+![alt text](<image/Screenshot 2026-06-13 182930.png>)
 
 ## 🚀 Key Features
 
