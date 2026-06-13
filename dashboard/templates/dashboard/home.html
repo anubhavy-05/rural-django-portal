@@ -14,30 +14,12 @@
         body {
             background-color: var(--emerald-bg) !important;
         }
-        .text-emerald { 
-            color: var(--emerald-main) !important; 
-        }
-        .bg-emerald { 
-            background-color: var(--emerald-main) !important; 
-            color: white !important; 
-        }
-        .btn-emerald { 
-            background-color: var(--emerald-main) !important; 
-            color: white !important; 
-            border: none;
-            border-radius: 6px;
-        }
-        .btn-emerald:hover {
-            background-color: #085e45 !important;
-            color: white !important;
-        }
-        .card {
-            border-radius: 10px;
-            border: 1px solid #e2efe7;
-        }
-        .card-header {
-            border-radius: 10px 10px 0 0 !important;
-        }
+        .text-emerald { color: var(--emerald-main) !important; }
+        .bg-emerald { background-color: var(--emerald-main) !important; color: white !important; }
+        .btn-emerald { background-color: var(--emerald-main) !important; color: white !important; border: none; border-radius: 6px; }
+        .btn-emerald:hover { background-color: #085e45 !important; color: white !important; }
+        .card { border-radius: 10px; border: 1px solid #e2efe7; }
+        .card-header { border-radius: 10px 10px 0 0 !important; }
 
         /* Chatbot Widget Styles */
         #chat-widget { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
@@ -52,6 +34,23 @@
         #chat-input-area { display: flex; border-top: 1px solid #e2efe7; }
         #chat-input { flex: 1; border: none; padding: 12px; outline: none; }
         #chat-send { background: var(--emerald-main); color: white; border: none; padding: 0 15px; cursor: pointer; font-weight: bold; }
+
+        /* NAYE GRAPH & STATS UI KE LIYE CSS */
+        .analytics-container { background: white; border-radius: 12px; }
+        .stat-card {
+            border-left: 4px solid #3b82f6; 
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            background-color: white;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            border-top: 1px solid #f3f4f6;
+            border-right: 1px solid #f3f4f6;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .stat-label { font-size: 0.85rem; color: #6b7280; font-weight: 500; margin-bottom: 4px; }
+        .stat-value { font-size: 1.4rem; font-weight: 800; color: #1f2937; }
+        .graph-title { color: #1e3a8a; font-weight: 800; }
     </style>
 </head>
 <body>
@@ -120,17 +119,54 @@
             </div>
         {% endif %}
 
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-emerald d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Price Trend Analytics 📈</h5>
-                <div class="btn-group btn-group-sm" role="group">
-                    <button type="button" id="btn-7" class="btn btn-light fw-bold text-emerald" onclick="filterChart(7)">7 Days</button>
-                    <button type="button" id="btn-30" class="btn btn-light fw-bold text-emerald" onclick="filterChart(30)">1 Month</button>
-                    <button type="button" id="btn-365" class="btn btn-light fw-bold text-emerald" onclick="filterChart(365)">1 Year</button>
+        <div class="row mb-5">
+            <div class="col-lg-8 mb-3 mb-lg-0">
+                <div class="card shadow-sm h-100 analytics-container border-0">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 class="graph-title m-0">📉 Price Trend Analysis</h4>
+                            <div class="btn-group btn-group-sm shadow-sm" role="group">
+                                <button type="button" id="btn-7" class="btn btn-outline-secondary fw-bold" onclick="filterChart(7)">7 Days</button>
+                                <button type="button" id="btn-30" class="btn btn-outline-secondary fw-bold" onclick="filterChart(30)">1 Month</button>
+                                <button type="button" id="btn-365" class="btn btn-outline-secondary fw-bold" onclick="filterChart(365)">1 Year</button>
+                            </div>
+                        </div>
+                        <canvas id="priceChart" height="130"></canvas>
+                    </div>
                 </div>
             </div>
-            <div class="card-body">
-                <canvas id="priceChart" height="100"></canvas>
+
+            <div class="col-lg-4">
+                <div class="card shadow-sm h-100 border-0" style="background-color: #f8fafc;">
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-4" style="color: #1f2937;">Market Statistics</h5>
+                        
+                        <div class="stat-card">
+                            <div class="stat-label">Average Price</div>
+                            <div class="stat-value" id="stat-avg">₹ 0</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-label">Minimum Price</div>
+                            <div class="stat-value" id="stat-min">₹ 0</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-label">Maximum Price</div>
+                            <div class="stat-value" id="stat-max">₹ 0</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-label">Latest Price</div>
+                            <div class="stat-value" id="stat-latest">₹ 0</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-label">Price Volatility</div>
+                            <div class="stat-value" id="stat-volatility">0.0%</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -252,10 +288,32 @@
         let priceChart;
 
         function renderChart(filteredData) {
-            const sortedData = [...filteredData].reverse();
-            const labels = sortedData.map(r => `${r.crop_name} (${r.region})`);
-            const prices = sortedData.map(r => r.predicted_price);
+            if(filteredData.length === 0) return;
 
+            const sortedData = [...filteredData].reverse();
+            
+            // Format dates for X-axis
+            const labels = sortedData.map(r => {
+                let d = new Date(r.created_at);
+                return `${d.getDate()}/${d.getMonth()+1}`;
+            });
+            const prices = sortedData.map(r => parseFloat(r.predicted_price));
+
+            // Calculate Market Statistics
+            const maxPrice = Math.max(...prices);
+            const minPrice = Math.min(...prices);
+            const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+            const latestPrice = prices[prices.length - 1];
+            const volatility = minPrice > 0 ? ((maxPrice - minPrice) / minPrice) * 100 : 0;
+
+            // Update DOM Elements
+            document.getElementById('stat-avg').innerText = '₹ ' + avgPrice.toLocaleString('en-IN', {maximumFractionDigits: 0});
+            document.getElementById('stat-min').innerText = '₹ ' + minPrice.toLocaleString('en-IN', {maximumFractionDigits: 0});
+            document.getElementById('stat-max').innerText = '₹ ' + maxPrice.toLocaleString('en-IN', {maximumFractionDigits: 0});
+            document.getElementById('stat-latest').innerText = '₹ ' + latestPrice.toLocaleString('en-IN', {maximumFractionDigits: 0});
+            document.getElementById('stat-volatility').innerText = volatility.toFixed(1) + '%';
+
+            // Chart Rendering
             if (priceChart) {
                 priceChart.data.labels = labels;
                 priceChart.data.datasets[0].data = prices;
@@ -266,20 +324,34 @@
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: 'Predicted Price (₹ per quintal)',
+                            label: 'Predicted Price (₹)',
                             data: prices,
-                            borderColor: '#48c78e', 
-                            backgroundColor: 'rgba(72, 199, 142, 0.25)', 
-                            borderWidth: 3,
-                            tension: 0.3, 
+                            borderColor: '#16a34a', 
+                            backgroundColor: 'rgba(34, 197, 94, 0.15)', 
+                            borderWidth: 2.5,
+                            tension: 0.1, 
                             fill: true,
-                            pointBackgroundColor: '#0b7a5a'
+                            pointBackgroundColor: '#15803d',
+                            pointRadius: 4,
+                            pointHoverRadius: 6
                         }]
                     },
                     options: {
                         responsive: true,
+                        plugins: { legend: { display: false } }, 
                         scales: {
-                            y: { beginAtZero: false }
+                            y: { 
+                                beginAtZero: false,
+                                ticks: {
+                                    callback: function(value) { return '₹ ' + value; },
+                                    color: '#6b7280'
+                                },
+                                grid: { color: '#f3f4f6' }
+                            },
+                            x: {
+                                ticks: { color: '#6b7280' },
+                                grid: { display: false }
+                            }
                         }
                     }
                 });
@@ -295,19 +367,30 @@
                 return daysDiff <= days;
             });
 
+            // Button styling toggle
             document.querySelectorAll('.btn-group .btn').forEach(btn => {
-                btn.classList.remove('btn-dark', 'text-white');
-                btn.classList.add('btn-light', 'text-emerald');
+                btn.classList.remove('btn-primary', 'text-white');
+                btn.classList.add('btn-outline-secondary');
             });
             const activeBtn = document.getElementById(`btn-${days}`);
             if(activeBtn) {
-                activeBtn.classList.remove('btn-light', 'text-emerald');
-                activeBtn.classList.add('btn-dark', 'text-white');
+                activeBtn.classList.remove('btn-outline-secondary');
+                activeBtn.classList.add('btn-primary', 'text-white');
             }
 
-            renderChart(filtered);
+            // Fallback for no data
+            if(filtered.length === 0) {
+                 document.getElementById('stat-avg').innerText = 'N/A';
+                 document.getElementById('stat-min').innerText = 'N/A';
+                 document.getElementById('stat-max').innerText = 'N/A';
+                 document.getElementById('stat-latest').innerText = 'N/A';
+                 document.getElementById('stat-volatility').innerText = 'N/A';
+            } else {
+                renderChart(filtered);
+            }
         }
 
+        // Initialize on load
         filterChart(365);
     </script>
 
